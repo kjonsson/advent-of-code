@@ -32,9 +32,11 @@ const secondPart = () => {
   let prevSum = numbers[0] + numbers[1] + numbers[2];
   for (let i = 3; i < numbers.length; i++) {
     const curr = prevSum - numbers[i - 3] + numbers[i];
+
     if (curr > prevSum) {
       result++;
     }
+
     prevSum = curr;
   }
 
