@@ -211,15 +211,10 @@ const firstPart = () => {
     totalPerTree[i] = new Array(width).fill(0);
   }
 
-  // console.log(grid);
   processFromLeft(grid, totalPerTree);
-  // console.log(totalPerTree);
   processFromRight(grid, totalPerTree);
-  // console.log(totalPerTree);
   processFromTop(grid, totalPerTree);
-  // console.log(totalPerTree);
   processFromBottom(grid, totalPerTree);
-  // console.log(totalPerTree);
 
   console.log("answer is", Math.max.apply(null, totalPerTree.flat()));
 };
