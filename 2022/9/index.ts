@@ -8,6 +8,11 @@ interface Instruction {
   quantity: number;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 const parseInstruction = (row: string): Instruction => {
   const [direction, quantity] = row.split(" ");
 
@@ -18,14 +23,73 @@ const createKey = (x: number, y: number): string => {
   return `${x},${y}`;
 };
 
-const firstPart = () => {
-  const fileData = fs.readFileSync(__dirname + "/input.txt", "utf-8");
-  const rows = fileData.split("\n");
+const followNext = ({
+  nextNode,
+  currentNode,
+}: {
+  nextNode: Position;
+  currentNode: Position;
+}): { nextNode: Position; currentNode: Position } => {
+  const newNext = { ...nextNode };
+  const newCurrent = { ...currentNode };
 
-  let x = 0;
-  let y = 0;
-  let headPos = { x: 0, y: 0 };
-  let tailPos = { x: 0, y: 0 };
+  const maxDistanceToNode = Math.max(
+    Math.abs(nextNode.x - currentNode.x),
+    Math.abs(nextNode.y - currentNode.y)
+  );
+
+  // within distance, do nothing
+  if (maxDistanceToNode <= 1) {
+    return { nextNode: newNext, currentNode: newCurrent };
+  }
+
+  // Same line ... just move closer
+  if (nextNode.x === currentNode.x) {
+    newCurrent.y += nextNode.y > currentNode.y ? 1 : -1;
+    return { nextNode: newNext, currentNode: newCurrent };
+  }
+
+  // Same line ... just move closer
+  if (nextNode.y === currentNode.y) {
+    newCurrent.x += nextNode.x > currentNode.x ? 1 : -1;
+    return { nextNode: newNext, currentNode: newCurrent };
+  }
+
+  // Need to move diagonally towards nextnode
+  newCurrent.x += nextNode.x > currentNode.x ? 1 : -1;
+  newCurrent.y += nextNode.y > currentNode.y ? 1 : -1;
+
+  return { nextNode: newNext, currentNode: newCurrent };
+};
+
+const moveHead = ({
+  headPos,
+  instruction,
+}: {
+  headPos: Position;
+  instruction: Instruction;
+}): { headPos: Position } => {
+  const prevHeadPos = { ...headPos };
+
+  // Move head
+  if (instruction.direction === "U") {
+    headPos.y += 1;
+  } else if (instruction.direction === "D") {
+    headPos.y -= 1;
+  } else if (instruction.direction === "L") {
+    headPos.x -= 1;
+  } else if (instruction.direction === "R") {
+    headPos.x += 1;
+  }
+
+  return { headPos };
+};
+
+const calculateVisitedPositions = (numberOfKnots: number, rows: string[]) => {
+  let positions: Position[] = new Array(numberOfKnots);
+  for (let i = 0; i < numberOfKnots; i++) {
+    positions[i] = { x: 0, y: 0 };
+  }
 
   let positionsFound = new Set();
 
@@ -33,49 +97,41 @@ const firstPart = () => {
     const instruction = parseInstruction(row);
 
     for (let i = 0; i < instruction.quantity; i++) {
-      const prevHeadPos = { ...headPos };
+      positions[0] = moveHead({
+        headPos: positions[0],
+        instruction,
+      }).headPos;
 
-      // Move head
-      if (instruction.direction === "U") {
-        headPos.y += 1;
-      } else if (instruction.direction === "D") {
-        headPos.y -= 1;
-      } else if (instruction.direction === "L") {
-        headPos.x -= 1;
-      } else if (instruction.direction === "R") {
-        headPos.x += 1;
+      for (let i = 1; i < positions.length; i++) {
+        const { currentNode, nextNode } = followNext({
+          nextNode: positions[i - 1],
+          currentNode: positions[i],
+        });
+
+        positions[i] = currentNode;
       }
 
-      // Move tail
-      if (
-        prevHeadPos.y === tailPos.y &&
-        (instruction.direction === "U" || instruction.direction === "D")
-      ) {
-        tailPos = tailPos;
-      } else if (
-        prevHeadPos.x === tailPos.x &&
-        (instruction.direction === "L" || instruction.direction === "R")
-      ) {
-        tailPos = tailPos;
-      } else if (
-        Math.abs(headPos.x - tailPos.x) <= 1 &&
-        Math.abs(headPos.y - tailPos.y) <= 1
-      ) {
-        tailPos = tailPos;
-      } else {
-        tailPos = { ...prevHeadPos };
-      }
-
-      positionsFound.add(createKey(tailPos.x, tailPos.y));
+      positionsFound.add(createKey(positions.at(-1).x, positions.at(-1).y));
     }
   });
 
   console.log(positionsFound.size);
 };
 
+const firstPart = () => {
+  const fileData = fs.readFileSync(__dirname + "/input.txt", "utf-8");
+  const rows = fileData.split("\n");
+
+  const NUMBER_OF_KNOTS = 2;
+  calculateVisitedPositions(NUMBER_OF_KNOTS, rows);
+};
+
 const secondPart = () => {
   const fileData = fs.readFileSync(__dirname + "/input.txt", "utf-8");
   const rows = fileData.split("\n");
+
+  const NUMBER_OF_KNOTS = 10;
+  calculateVisitedPositions(NUMBER_OF_KNOTS, rows);
 };
 
 firstPart();
