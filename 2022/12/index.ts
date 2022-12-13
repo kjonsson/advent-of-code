@@ -8,6 +8,27 @@ interface LocationToVisit {
   previousValue?: string;
 }
 
+const getStartLocations = (allowCharacterA: boolean, rows: string[]) => {
+  return rows
+    .map((row, rowIdx) => {
+      return row
+        .split("")
+        .map((val, valIdx) => {
+          if ((allowCharacterA && val === "a") || val === "S") {
+            return {
+              x: valIdx,
+              y: rowIdx,
+            };
+          }
+
+          return null;
+        })
+        .filter((val) => !!val);
+    })
+    .filter((val) => !!val)
+    .flat();
+};
+
 const makeKey = (x: number, y: number) => `${x},${y}`;
 
 const makeLocation = (
@@ -26,14 +47,17 @@ const makeLocation = (
 };
 
 const canMoveTo = (prevValue: string, nextValue: string): boolean => {
+  // Initial step
   if (!prevValue || prevValue === "S") {
     return true;
   }
 
+  // Final step
   if (prevValue === "z" && nextValue === "E") {
     return true;
   }
 
+  // Caps not allowed
   if (
     prevValue.toUpperCase() === prevValue ||
     nextValue.toUpperCase() === nextValue
@@ -41,14 +65,15 @@ const canMoveTo = (prevValue: string, nextValue: string): boolean => {
     return false;
   }
 
-  if (nextValue.charCodeAt(0) - prevValue.charCodeAt(0) <= 1) {
-    return true;
-  }
-
-  return false;
+  // Must be one larger at most
+  return nextValue.charCodeAt(0) - prevValue.charCodeAt(0) <= 1;
 };
 
-const execute = (rows: string[], startX: number, startY: number) => {
+const findShortestPath = (
+  rows: string[],
+  startX: number,
+  startY: number
+): number => {
   const startLocation = makeLocation(startX, startY, 0);
   const height = rows.length;
   const width = rows[0].length;
@@ -62,12 +87,12 @@ const execute = (rows: string[], startX: number, startY: number) => {
     const locationToVisit = stack.pop();
 
     // Out of  bounds
-    if (locationToVisit.x < 0 || locationToVisit.x >= width) {
-      continue;
-    }
-
-    // Out of bounds
-    if (locationToVisit.y < 0 || locationToVisit.y >= height) {
+    if (
+      locationToVisit.x < 0 ||
+      locationToVisit.x >= width ||
+      locationToVisit.y < 0 ||
+      locationToVisit.y >= height
+    ) {
       continue;
     }
 
@@ -84,43 +109,29 @@ const execute = (rows: string[], startX: number, startY: number) => {
     }
     visited.add(makeKey(locationToVisit.x, locationToVisit.y));
 
+    // Final step
     if (value === "E") {
       result = locationToVisit.stepsToVisit;
       break;
     }
 
-    stack.unshift(
-      makeLocation(
-        locationToVisit.x - 1,
-        locationToVisit.y,
-        locationToVisit.stepsToVisit + 1,
-        value
-      )
-    );
-    stack.unshift(
-      makeLocation(
-        locationToVisit.x + 1,
-        locationToVisit.y,
-        locationToVisit.stepsToVisit + 1,
-        value
-      )
-    );
-    stack.unshift(
-      makeLocation(
-        locationToVisit.x,
-        locationToVisit.y - 1,
-        locationToVisit.stepsToVisit + 1,
-        value
-      )
-    );
-    stack.unshift(
-      makeLocation(
-        locationToVisit.x,
-        locationToVisit.y + 1,
-        locationToVisit.stepsToVisit + 1,
-        value
-      )
-    );
+    // Visit left, right, up, down
+    const nextPositions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ];
+    nextPositions.forEach(([xAdd, yAdd]) => {
+      stack.unshift(
+        makeLocation(
+          locationToVisit.x + xAdd,
+          locationToVisit.y + yAdd,
+          locationToVisit.stepsToVisit + 1,
+          value
+        )
+      );
+    });
   }
 
   return result;
@@ -130,24 +141,14 @@ const firstPart = () => {
   const fileData = fs.readFileSync(__dirname + "/input.txt", "utf-8");
   const rows = fileData.split("\n");
 
-  const startLocations = rows
-    .map((row, rowIdx) => {
-      if (row.includes("S")) {
-        return {
-          x: row.indexOf("S"),
-          y: rowIdx,
-        };
-      }
-
-      return null;
-    })
-    .filter((val) => !!val);
+  const startLocations = getStartLocations(false, rows);
 
   const result = startLocations.map((location) => {
-    return execute(rows, location.x, location.y);
+    return findShortestPath(rows, location.x, location.y);
   });
+
   console.log(
-    "part1 done",
+    "part1 done, shortest path is",
     result.filter((x) => x > 0).sort((a, b) => a - b)[0]
   );
 };
@@ -156,30 +157,14 @@ const secondPart = () => {
   const fileData = fs.readFileSync(__dirname + "/input.txt", "utf-8");
   const rows = fileData.split("\n");
 
-  const startLocations = rows
-    .map((row, rowIdx) => {
-      return row
-        .split("")
-        .map((val, valIdx) => {
-          if (val === "a" || val === "S") {
-            return {
-              x: valIdx,
-              y: rowIdx,
-            };
-          }
-
-          return null;
-        })
-        .filter((val) => !!val);
-    })
-    .filter((val) => !!val)
-    .flat();
+  const startLocations = getStartLocations(true, rows);
 
   const result = startLocations.map((location) => {
-    return execute(rows, location.x, location.y);
+    return findShortestPath(rows, location.x, location.y);
   });
+
   console.log(
-    "part2 done",
+    "part2 done, shortest path is",
     result.filter((x) => x > 0).sort((a, b) => a - b)[0]
   );
 };
